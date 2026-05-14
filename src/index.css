@@ -1,4 +1,4 @@
-/* ── Hibiki v11 Global Styles ─────────────────────────────────────────────── */
+/* ── Hibiki v12 Global Styles ─────────────────────────────────────────────── */
 
 :root {
   --sakura:     #f9c0cb;
@@ -627,4 +627,108 @@ button { cursor: pointer; border: none; background: none; }
 /* User bubbles: plain text only */
 .bubble-user-content {
   line-height: 1.55;
+}
+
+/* ── Streaming bubble ── */
+.streaming-bubble {
+  transition: border-color 0.3s ease;
+  position: relative;
+}
+.stream-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--deep-rose);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  animation: blink-cursor 0.75s ease-in-out infinite;
+}
+[data-theme="dark"] .streaming-bubble {
+  background: var(--surface-2) !important;
+  border-color: rgba(240, 144, 168, 0.35) !important;
+}
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Dark theme text visibility fixes ── */
+[data-theme="dark"] .char-card-name  { color: #f0e0e8 !important; }
+[data-theme="dark"] .char-card-desc  { color: rgba(240,224,232,0.75) !important; }
+[data-theme="dark"] .char-card-mood  { opacity: 0.9; }
+[data-theme="dark"] .conv-name       { color: var(--ink); }
+[data-theme="dark"] .conv-preview    { color: var(--muted); }
+[data-theme="dark"] .card            { background: var(--surface); color: var(--ink); }
+[data-theme="dark"] .card-section    { color: var(--ink); }
+[data-theme="dark"] .section-label   { color: var(--muted); }
+[data-theme="dark"] .input           { background: var(--input-bg); color: var(--ink); border-color: var(--border); }
+[data-theme="dark"] .input::placeholder { color: var(--muted); }
+[data-theme="dark"] .topbar          { background: rgba(15,10,20,0.97); }
+[data-theme="dark"] .bottom-nav      { background: rgba(15,10,20,0.97); }
+[data-theme="dark"] .desktop-sidebar { background: var(--surface); }
+[data-theme="dark"] .toggle          { background: var(--border); }
+[data-theme="dark"] .toggle.on       { background: var(--deep-rose); }
+/* Card gradient text fix for light cards in dark mode */
+[data-theme="dark"] .char-card[style*="f0f0ff"],
+[data-theme="dark"] .char-card[style*="fff0"] { color: #2a1830 !important; }
+/* Bubble colors dark mode */
+[data-theme="dark"] .bubble-ai-content { color: var(--ink); }
+[data-theme="dark"] .bubble-ai-content .action-block { color: var(--muted); }
+[data-theme="dark"] .speech-block { color: var(--ink); }
+
+/* ── Easter Egg: Star Memory Constellation ── */
+.constellation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #020008;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: constellation-fade-in 0.6s ease;
+  cursor: pointer;
+}
+@keyframes constellation-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.constellation-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.constellation-label {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-jp);
+  font-size: 1.1rem;
+  color: rgba(249,192,203,0.6);
+  letter-spacing: 0.3em;
+  text-align: center;
+  pointer-events: none;
+  animation: constellation-fade-in 1.2s ease 0.8s both;
+}
+.constellation-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: rgba(249,192,203,0.4);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 8px;
+  transition: color 0.2s;
+}
+.constellation-close:hover { color: rgba(249,192,203,0.9); }
+
+/* ── Easter egg tap zone ── */
+.easter-egg-tap {
+  cursor: default;
+  user-select: none;
 }

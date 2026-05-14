@@ -1,4 +1,4 @@
-// ── Hibiki Providers v11 ────────────────────────────────────────────────────────
+// ── Hibiki Providers v12 ────────────────────────────────────────────────────────
 export const PROVIDERS = {
   openrouter: {
     id: 'openrouter', name: 'OpenRouter', emoji: '🔀', color: '#7c3aed',

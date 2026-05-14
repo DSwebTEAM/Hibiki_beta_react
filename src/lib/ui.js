@@ -1,10 +1,10 @@
-// ── Hibiki UI Utilities v11 ─────────────────────────────────────────────────────
-import { BASE_BEHAVIOUR } from './baseBehaviour'
+// ── Hibiki UI Utilities v12 ─────────────────────────────────────────────────────
+import { BEHAVIOURAL_ENGINE } from '../engine/behaviouralEngine'
 import { TONE_PRESETS } from './characters'
 
-export function buildSystemPrompt(char, toneId, runtimeInstruction, selectedStoryline, memoryBlock) {
+export function buildSystemPrompt(char, toneId, runtimeInstruction, selectedStoryline, memoryBlock, engineBlock) {
   const parts = []
-  parts.push(BASE_BEHAVIOUR)
+  parts.push(BEHAVIOURAL_ENGINE)
 
   const core = char.system || `You are ${char.name}, a companion. Mood: ${char.mood}.`
   parts.push(`[CHARACTER PERSONALITY]\n${core}`)
@@ -36,6 +36,9 @@ export function buildSystemPrompt(char, toneId, runtimeInstruction, selectedStor
 
   // Layer 4.5 — Smart memory injection
   if (memoryBlock?.trim()) parts.push(memoryBlock)
+
+  // Layer 5 — Behavioral Engine directives (emotional state, relationship, style, transition)
+  if (engineBlock?.trim()) parts.push(engineBlock)
 
   const tone = TONE_PRESETS.find(t => t.id === toneId)
   if (tone) parts.push(`[TONE MODIFIER]\n${tone.mod}`)

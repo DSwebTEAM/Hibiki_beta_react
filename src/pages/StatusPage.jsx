@@ -1,4 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+
+// Session-persistent ping store — survives route changes, resets on tab/browser reload
+const SESSION_KEY = 'hibiki_ping_session'
+function loadSession() { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}') } catch { return {} } }
+function saveSession(data) { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(data)) } catch {} }
 import { storage } from '../lib/storage'
 import { pingProvider, fetchCredits, testCompletion, customPing } from '../lib/api'
 import { PROVIDER_LIST, getProvider } from '../lib/providers'
@@ -66,12 +71,13 @@ function SpeedBadge({ ms }) {
 }
 
 export default function StatusPage() {
-  const [results, setResults]       = useState({})
-  const [credits, setCredits]       = useState({})
-  const [testResults, setTestResults] = useState({})
-  const [history, setHistory]       = useState({}) // pid -> [ms, ms, ...]
-  const [pinging, setPinging]       = useState({})
-  const [testing, setTesting]       = useState({})
+  const session = loadSession()
+  const [results, setResults]         = useState(session.results || {})
+  const [credits, setCredits]         = useState(session.credits || {})
+  const [testResults, setTestResults] = useState(session.testResults || {})
+  const [history, setHistory]         = useState(session.history || {})
+  const [pinging, setPinging]         = useState({})
+  const [testing, setTesting]         = useState({})
   const [nerdPrompt, setNerdPrompt] = useState('Are you online?')
   const [nerdPid, setNerdPid]       = useState('')
   const [nerdModel, setNerdModel]   = useState('')
@@ -88,17 +94,27 @@ export default function StatusPage() {
   function recordHistory(pid, ms) {
     setHistory(h => {
       const prev = h[pid] || []
-      return { ...h, [pid]: [...prev.slice(-9), ms] }
+      const next = { ...h, [pid]: [...prev.slice(-9), ms] }
+      saveSession({ results, credits, testResults, history: next })
+      return next
     })
   }
 
   async function ping(pid) {
     setPinging(v => ({ ...v, [pid]: true }))
     const r = await pingProvider(pid)
-    setResults(v => ({ ...v, [pid]: r }))
+    setResults(v => {
+      const next = { ...v, [pid]: r }
+      saveSession({ results: next, credits, testResults, history })
+      return next
+    })
     if (r.ms) recordHistory(pid, r.ms)
     const cr = await fetchCredits(pid)
-    if (cr) setCredits(v => ({ ...v, [pid]: cr }))
+    if (cr) setCredits(v => {
+      const next = { ...v, [pid]: cr }
+      saveSession({ results, credits: next, testResults, history })
+      return next
+    })
     setPinging(v => ({ ...v, [pid]: false }))
   }
 

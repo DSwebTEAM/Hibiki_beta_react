@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { storage } from '../lib/storage'
-import { chat as apiChat } from '../lib/api'
+import { chat as apiChat, chatStream, cancelStream } from '../lib/api'
 import { DEFAULT_CHARACTERS, TONE_PRESETS, CHAT_BACKGROUNDS } from '../lib/characters'
 import { buildSystemPrompt, formatMessage, timeAgo, showToast } from '../lib/ui'
 import { Memory } from '../lib/memory'
+import { orchestrateEngine, updateRelationshipProgress } from '../engine/index'
 import BottomNav, { DesktopNav } from '../components/shared/BottomNav'
 
 function useIsMobile() {
@@ -145,6 +146,8 @@ function ChatView({ chatId, onBack, isMobile, onChatUpdate }) {
   const [char, setChar] = useState(null)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [streaming, setStreaming] = useState(false)
+  const [streamingContent, setStreamingContent] = useState('')
   const [tone, setTone] = useState('casual')
   const [bgId, setBgId] = useState(storage.getChatBg())
   const [showToneBar, setShowToneBar] = useState(false)
@@ -169,17 +172,13 @@ function ChatView({ chatId, onBack, isMobile, onChatUpdate }) {
 
   function handleSend() {
     const text = input.trim()
-    if (!text || loading || !chatData || !char) return
+    if (!text || loading || streaming || !chatData || !char) return
 
     // Runtime command shortcuts
     let runtimeInstruction = chatData.runtimeInstruction || ''
     if (text.startsWith('/')) {
       const cmd = text.slice(1).trim()
-      if (cmd === 'stop' || cmd === 'reset') {
-        runtimeInstruction = ''
-      } else {
-        runtimeInstruction = cmd
-      }
+      runtimeInstruction = (cmd === 'stop' || cmd === 'reset') ? '' : cmd
       const updated = storage.updateChat(chatId, { runtimeInstruction })
       setChatData(updated.find(c => c.id === chatId) || chatData)
       setRuntimeCmd(runtimeInstruction)
@@ -188,7 +187,7 @@ function ChatView({ chatId, onBack, isMobile, onChatUpdate }) {
       return
     }
 
-    // Extract memories from user message (async, non-blocking)
+    // Extract memory from user message
     Memory.extract(chatId, text)
 
     const userMsg = { role: 'user', content: text, ts: Date.now() }
@@ -199,24 +198,45 @@ function ChatView({ chatId, onBack, isMobile, onChatUpdate }) {
     onChatUpdate()
     setInput('')
     setLoading(true)
+    setStreamingContent('')
 
-    // Select relevant memories and inject into system prompt
+    // Engine orchestration — emotional state + all directives
+    const engineBlock = orchestrateEngine(chatId, text, newMessages)
+
+    // Memory injection
     const relevantMems = Memory.select(chatId, text)
     const memoryBlock  = Memory.buildBlock(relevantMems)
-    const systemPrompt = buildSystemPrompt(char, tone, runtimeInstruction, chatData.selectedStoryline, memoryBlock)
 
-    apiChat({ systemPrompt, messages: newMessages })
-      .then(res => {
-        const aiMsg = { role: 'assistant', content: res.content, ts: Date.now() }
+    const systemPrompt = buildSystemPrompt(char, tone, runtimeInstruction, chatData.selectedStoryline, memoryBlock, engineBlock)
+
+    chatStream({
+      systemPrompt,
+      messages: newMessages,
+      onChunk: (token) => {
+        setLoading(false)
+        setStreaming(true)
+        setStreamingContent(prev => prev + token)
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      },
+      onDone: (fullText) => {
+        const aiMsg = { role: 'assistant', content: fullText, ts: Date.now() }
         const withAi = [...newMessages, aiMsg]
         const ul = storage.updateChat(chatId, { messages: withAi })
         setChatData(ul.find(c => c.id === chatId) || { ...updated, messages: withAi })
+        // Update relationship engine after response
+        updateRelationshipProgress(chatId, text, fullText)
+        setStreamingContent('')
+        setStreaming(false)
         onChatUpdate()
-      })
-      .catch(err => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      },
+      onError: (err) => {
         showToast(`Error: ${err.message}`)
-      })
-      .finally(() => setLoading(false))
+        setLoading(false)
+        setStreaming(false)
+        setStreamingContent('')
+      },
+    })
   }
 
   function handleKey(e) {
@@ -352,7 +372,7 @@ function ChatView({ chatId, onBack, isMobile, onChatUpdate }) {
           )
         })}
 
-        {/* Typing indicator */}
+        {/* Loading dots — waiting for first token */}
         {loading && (
           <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '8px', alignItems: 'flex-end' }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: char.accent + '22', color: char.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-jp)', fontSize: '0.72rem' }}>
@@ -365,6 +385,29 @@ function ChatView({ chatId, onBack, isMobile, onChatUpdate }) {
             </div>
           </div>
         )}
+
+        {/* Streaming bubble — live text as tokens arrive */}
+        {streaming && streamingContent && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '8px', alignItems: 'flex-end' }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: char.accent + '22', color: char.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-jp)', fontSize: '0.72rem', flexShrink: 0 }}>
+              {char.kanji || char.name[0]}
+            </div>
+            <div className="streaming-bubble" style={{
+              maxWidth: '72%', padding: '10px 14px',
+              borderRadius: '20px', borderBottomLeftRadius: '6px',
+              fontFamily: 'var(--font-serif)', fontSize: '0.95rem', lineHeight: '1.55',
+              wordBreak: 'break-word', background: 'var(--surface)',
+              color: 'var(--ink)', border: `1.5px solid ${char.accent}88`,
+            }}>
+              <div
+                className="bubble-ai-content"
+                dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent).html }}
+              />
+              <span className="stream-cursor" />
+            </div>
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
@@ -383,13 +426,25 @@ function ChatView({ chatId, onBack, isMobile, onChatUpdate }) {
             onKeyDown={handleKey}
           />
         </div>
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || loading}
-          style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: input.trim() && !loading ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'transform 0.15s, opacity 0.15s', background: input.trim() && !loading ? 'var(--deep-rose)' : 'var(--petal)', color: input.trim() && !loading ? '#fff' : 'var(--muted)' }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        </button>
+        </div>
+        {/* Cancel during streaming / Send button */}
+        {streaming ? (
+          <button
+            onClick={() => { cancelStream(chatId); setStreaming(false); setStreamingContent(''); setLoading(false) }}
+            style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: '#d04040', color: '#fff', transition: 'transform 0.15s' }}
+            title="Cancel"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        ) : (
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || loading}
+            style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: input.trim() && !loading ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'transform 0.15s, opacity 0.15s', background: input.trim() && !loading ? 'var(--deep-rose)' : 'var(--petal)', color: input.trim() && !loading ? '#fff' : 'var(--muted)' }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        )}
       </div>
     </div>
   )

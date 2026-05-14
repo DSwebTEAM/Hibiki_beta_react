@@ -4,15 +4,18 @@ import { storage, TOKEN_MODES, AI_DEFAULTS } from '../lib/storage'
 import { PROVIDER_LIST, getProvider } from '../lib/providers'
 import { showToast } from '../lib/ui'
 import { Memory } from '../lib/memory'
+import { ConstellationEasterEgg, useConstellationTrigger } from '../components/shared/ConstellationEasterEgg'
 import BottomNav, { DesktopNav } from '../components/shared/BottomNav'
 
 export default function SettingsPage() {
   const navigate = useNavigate()
+  const { show: showConstellation, setShow: setShowConstellation, onTap: onLogoTap } = useConstellationTrigger()
   const [keys, setKeys] = useState(storage.getProviderKeys())
   const [activePid, setActivePid] = useState(storage.getActiveProvider())
   const [activeModel, setActiveModel] = useState(null)
   const [tokenMode, setTokenMode] = useState(storage.getTokenMode())
   const [aiParams, setAiParams] = useState(storage.getAiParams())
+  const [nsfwOk, setNsfwOk] = useState(storage.getNsfwOk())
   const [fallbackChain, setFallbackChain] = useState(storage.getFallbackChain())
   const [dark, setDark] = useState(document.documentElement.getAttribute('data-theme') === 'dark')
   const [fbProvSel, setFbProvSel] = useState('openrouter')
@@ -137,6 +140,7 @@ export default function SettingsPage() {
   return (
     <div className="page">
       <DesktopNav />
+      {showConstellation && <ConstellationEasterEgg onClose={() => setShowConstellation(false)} />}
       <div className="topbar">
         <span className="topbar-kanji">響</span>
         <span className="topbar-title">Settings</span>
@@ -153,6 +157,22 @@ export default function SettingsPage() {
               <div className="card-section">
                 <Row label="Dark theme" sub="Easy on the eyes at night">
                   <button className={`toggle ${dark ? 'on' : ''}`} onClick={toggleTheme} />
+                </Row>
+                <Row label="18+ Vibe Unlock" sub={nsfwOk ? "Adult content enabled — characters may be more expressive" : "Unlock adult character content & expressive intimacy"}>
+                  <button className={`toggle ${nsfwOk ? 'on' : ''}`} onClick={() => {
+                    const next = !nsfwOk
+                    if (next) {
+                      // WIRED: leave space for custom vibe unlock prompt/gate
+                      // TODO: Add custom age verification or vibe unlock flow here
+                      storage.setNsfwOk(true)
+                      setNsfwOk(true)
+                      showToast('Vibe unlock enabled ✓')
+                    } else {
+                      storage.setNsfwOk(false)
+                      setNsfwOk(false)
+                      showToast('Vibe unlock disabled')
+                    }
+                  }} />
                 </Row>
               </div>
             </div>
@@ -360,8 +380,14 @@ export default function SettingsPage() {
             </div>
 
             <div style={{ textAlign: 'center', fontFamily: 'var(--font-ui)', fontSize: '0.65rem', color: 'var(--muted)', lineHeight: 1.8 }}>
-              <div style={{ fontFamily: 'var(--font-jp)', fontSize: '1.2rem', color: 'var(--border)', marginBottom: '4px' }}>響</div>
-              Hibiki v11 · Your key, your characters, your conversations<br />All data stored locally in your browser
+              <div
+                className="easter-egg-tap"
+                onClick={onLogoTap}
+                style={{ fontFamily: 'var(--font-jp)', fontSize: '1.4rem', color: 'var(--border)', marginBottom: '4px', cursor: 'default', display: 'inline-block', padding: '4px 12px', borderRadius: '10px', transition: 'color 0.15s' }}
+                title=""
+              >響</div>
+              <div>Hibiki v12 · Your key, your characters, your conversations</div>
+              <div style={{ opacity: 0.6 }}>All data stored locally in your browser</div>
             </div>
           </div>
 

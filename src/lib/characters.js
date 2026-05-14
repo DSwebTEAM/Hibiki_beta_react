@@ -1,4 +1,4 @@
-// ── Hibiki Characters v11 ─────────────────────────────────────────────────────
+// ── Hibiki Characters v12 ─────────────────────────────────────────────────────
 
 export const DEFAULT_CHARACTERS = [
   {

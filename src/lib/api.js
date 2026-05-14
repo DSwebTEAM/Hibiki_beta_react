@@ -1,4 +1,4 @@
-// ── Hibiki API v11 ─────────────────────────────────────────────────────────────
+// ── Hibiki API v12 ─────────────────────────────────────────────────────────────
 import { storage } from './storage'
 import { getProvider } from './providers'
 
@@ -112,4 +112,92 @@ export async function customPing(pid, modelId, userPrompt) {
     const r = await tryProvider(pid, modelId, sys, [{ role: 'user', content: userPrompt }])
     return { ok: true, ms: Date.now() - t0, reply: r.content, usage: r.usage }
   } catch (e) { return { ok: false, ms: Date.now() - t0, error: e.message } }
+}
+
+// ── Streaming API ─────────────────────────────────────────────────────────────
+export async function chatStream({ systemPrompt, messages, onChunk, onDone, onError }) {
+  const activePid   = storage.getActiveProvider()
+  const activeModel = storage.getActiveModel() || getProvider(activePid)?.defaultModel
+  const sequence    = [{ provider: activePid, model: activeModel }, ...storage.getFallbackChain()]
+  const ai          = storage.getAiParams()
+  const ctl_s       = storage.getApiControls()
+
+  let lastError = null
+
+  for (const entry of sequence) {
+    const provider = getProvider(entry.provider)
+    if (!provider || !storage.getKeyFor(entry.provider)) continue
+
+    const trimmed    = messages.slice(-Math.max(1, ai.contextWindow))
+    const fullSystem = [ai.systemPromptPrefix, systemPrompt].filter(Boolean).join('\n\n')
+
+    const body = {
+      model: entry.model, stream: true,
+      messages: [{ role: 'system', content: fullSystem }, ...trimmed.map(m => ({ role: m.role, content: m.content }))],
+      max_tokens: ai.maxTokens, temperature: ai.temperature,
+      top_p: ai.topP, presence_penalty: ai.presencePenalty, frequency_penalty: ai.frequencyPenalty,
+    }
+
+    const controller  = new AbortController()
+    const timer       = setTimeout(() => controller.abort(), ctl_s.timeoutMs || 30000)
+
+    try {
+      const res = await fetch(`${provider.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...provider.authHeader(storage.getKeyFor(entry.provider)) },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+      clearTimeout(timer)
+
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e?.error?.message || `HTTP ${res.status}`)
+      }
+
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder()
+      let full = '', buffer = ''
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          const trimmedLine = line.trim()
+          if (!trimmedLine || trimmedLine === 'data: [DONE]') continue
+          if (trimmedLine.startsWith('data: ')) {
+            try {
+              const json = JSON.parse(trimmedLine.slice(6))
+              const token = json?.choices?.[0]?.delta?.content
+              if (token) { full += token; onChunk?.(token) }
+            } catch {}
+          }
+        }
+      }
+
+      onDone?.(full)
+      return full
+
+    } catch (e) {
+      clearTimeout(timer)
+      lastError = e
+      if (e.name === 'AbortError') { onError?.(new Error('Request cancelled')); return null }
+      console.warn(`[Hibiki Stream] ${entry.provider}: ${e.message}`)
+    }
+  }
+
+  const err = new Error(lastError?.message || 'All providers failed.')
+  onError?.(err)
+  throw err
+}
+
+// Cancel controller registry — keyed by chatId
+const activeControllers = new Map()
+export function cancelStream(chatId) {
+  const c = activeControllers.get(chatId)
+  if (c) { c.abort(); activeControllers.delete(chatId) }
 }

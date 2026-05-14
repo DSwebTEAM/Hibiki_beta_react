@@ -1,4 +1,4 @@
-// ── Hibiki Storage v11 ─────────────────────────────────────────────────────────
+// ── Hibiki Storage v12 ─────────────────────────────────────────────────────────
 import { useSyncExternalStore } from 'react'
 
 const K = {

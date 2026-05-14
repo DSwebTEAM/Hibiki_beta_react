@@ -1,4 +1,4 @@
-// ── Hibiki Memory v11 ─────────────────────────────────────────────────────────
+// ── Hibiki Memory v12 ─────────────────────────────────────────────────────────
 // Smart context memory: extract → store → score → inject
 // No extra API calls. All heuristic. Lightweight by design.
 
