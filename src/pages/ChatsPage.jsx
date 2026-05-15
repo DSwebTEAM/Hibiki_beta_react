@@ -426,7 +426,6 @@ function ChatView({ chatId, onBack, isMobile, onChatUpdate }) {
             onKeyDown={handleKey}
           />
         </div>
-        </div>
         {/* Cancel during streaming / Send button */}
         {streaming ? (
           <button
