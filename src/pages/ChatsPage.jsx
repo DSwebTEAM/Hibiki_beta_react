@@ -81,7 +81,7 @@ function ConversationList({ chats, selectedId, onSelect, onDelete, isMobile }) {
           <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', pointerEvents: 'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input
             style={{ width: '100%', background: 'var(--petal)', border: '1px solid var(--border)', borderRadius: '12px', padding: '7px 12px 7px 30px', fontFamily: 'var(--font-ui)', fontSize: '0.8rem', color: 'var(--ink)', outline: 'none' }}
-            placeholder="Search chats…"
+            placeholder="Search chats..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -360,7 +360,7 @@ function ChatView({ chatId, onBack, isMobile, onChatUpdate }) {
               }}>
                 {!isUser && moodHint && (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontFamily: 'var(--font-ui)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: '10px', marginBottom: '5px', opacity: 0.75, background: char.accent + '22', color: char.accent }}>
-                    ● {moodHint}
+                    * {moodHint}
                   </div>
                 )}
                 <div
@@ -419,7 +419,7 @@ function ChatView({ chatId, onBack, isMobile, onChatUpdate }) {
           <textarea
             ref={inputRef}
             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'var(--font-serif)', fontSize: '0.95rem', color: 'var(--ink)', resize: 'none', lineHeight: '1.4', maxHeight: '100px', overflowY: 'auto' }}
-            placeholder={`Message ${char.name}…`}
+            placeholder={`Message ${char.name}...`}
             value={input}
             rows={1}
             onChange={e => setInput(e.target.value)}
