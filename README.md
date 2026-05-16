@@ -18,6 +18,29 @@
 </div>
 
 ---
+> [!WARNING]
+> HIBIKI is currently under active development and refinement.
+>
+> Some systems in the current release are still being optimized:
+>
+> - The Behavioural Engine is not yet performing consistently outside our internal testing environment.
+> - The ChatStream pause system currently has reliability issues in certain situations.
+> - Token usage in both the current and previous versions is higher than expected.
+>
+> ### Current Token Usage
+> - Previous versions: ~35% – 48%
+> - Current v12: ~3,352 tokens per request (~100% usage even in Economy Mode)
+>
+> ### Upcoming Optimization Update (In Progress)
+> Expected token usage after optimization:
+>
+> - Economy Mode: ~727 tokens (~22%)
+> - Balanced Mode: ~773 tokens (~23%)
+> - Max Mode: ~827 tokens (~25%)
+>
+> These optimizations are focused on reducing token consumption without compromising response quality.  
+> Output quality, behavioural consistency, and overall response efficiency are all being actively improved.
+
 
 ## What is HIBIKI?
 
