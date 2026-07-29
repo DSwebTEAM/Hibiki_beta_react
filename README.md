@@ -8,9 +8,10 @@
   <a href="https://hibiki-beta.netlify.app/">
     <img src="https://img.shields.io/badge/Try%20it%20now-hibiki--beta.netlify.app-c96a84?style=for-the-badge&logo=netlify&logoColor=white" alt="Try HIBIKI"/>
   </a>
-
   <br/><br/>
 
+> the netlify account which we are hosting hibiki got suspended we are moving the project to vercel hosting ASAP.
+> 
   ![React](https://img.shields.io/badge/React-Vite-61dafb?style=flat-square&logo=react)
   ![License](https://img.shields.io/badge/License-MIT-f4a0b4?style=flat-square)
   ![Privacy](https://img.shields.io/badge/Privacy-100%25%20local-40d080?style=flat-square)
